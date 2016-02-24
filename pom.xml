@@ -1,0 +1,76 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.skullabs.kikaha</groupId>
+        <artifactId>kikaha-project</artifactId>
+        <version>1.6.2</version>
+    </parent>
+
+    <groupId>io.skullabs.tools</groupId>
+    <artifactId>cloud-agent-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <!-- project configurations -->
+        <config.dir.source>source</config.dir.source>
+        <config.dir.resource>resources</config.dir.resource>
+        <config.dir.test.source>tests</config.dir.test.source>
+        <config.dir.test.resource>tests-resources</config.dir.test.resource>
+        <config.dir.output>output</config.dir.output>
+        <!-- dependencies version configuration -->
+        <version.aws>1.10.33</version.aws>
+        <version.metrics>3.1.2</version.metrics>
+        <version.byte.buddy>1.2.3</version.byte.buddy>
+    </properties>
+
+    <modules>
+        <module>cloud-agent</module>
+        <module>cloud-agent-aws</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-core</artifactId>
+                <version>${version.metrics}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${version.byte.buddy}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-cloudwatch</artifactId>
+                <version>${version.aws}</version>
+                <!--scope>provided</scope-->
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>2.4.3</version>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals><goal>shade</goal></goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <dependencyReducedPomLocation>${project.build.directory}/shaded-pom.xml</dependencyReducedPomLocation>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
