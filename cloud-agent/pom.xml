@@ -16,54 +16,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-        </dependency>
-        <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <inherited>false</inherited>
-                <configuration>
-                    <relocations>
-                        <relocation>
-                            <pattern>net</pattern>
-                            <shadedPattern>${project.groupId}.net</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>org</pattern>
-                            <shadedPattern>${project.groupId}.org</shadedPattern>
-                        </relocation>
-                    </relocations>
-                    <transformers>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"></transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                            <resource>META-INF/reference.conf</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                            <resource>conf/reference.conf</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                            <resource>conf/application.conf</resource>
-                        </transformer>
-                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                            <manifestEntries>
-                                <Premain-Class>io.skullabs.tools.agent.metrics.Agent</Premain-Class>
-                                <Agent-Class>io.skullabs.tools.agent.metrics.Agent</Agent-Class>
-                                <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                                <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                            </manifestEntries>
-                        </transformer>
-                    </transformers>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

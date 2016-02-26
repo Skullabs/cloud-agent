@@ -1,18 +1,41 @@
 package io.skullabs.tools.agent.commons;
 
+import lombok.RequiredArgsConstructor;
+
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.function.Function;
 
+import static io.skullabs.tools.agent.commons.Lang.asClass;
+
 /**
- *
+ * Read agent configuration. By default, it will lookup at the Agent's Jar folder to
+ * find the agent.conf file.
  */
+@RequiredArgsConstructor
 public class Config {
 
-	final File propertiesFile = new File( "agent.conf" );
-	final Properties reader = createFileWriter();
+	final Properties reader;
 
-	private Properties createFileWriter(){
+	public Config(){
+		final File propertiesFile = propertiesFile();
+		reader = createFileWriter( propertiesFile );
+	}
+
+	private static File propertiesFile(){
+		try {
+			final URI uri = Config.class.getProtectionDomain().getCodeSource().getLocation().toURI();
+			final File jarLocation = new File( uri.getPath() ).getParentFile();
+			return new File( jarLocation, "agent.conf" );
+		} catch (URISyntaxException e) {
+			Log.info( e.getMessage() );
+			throw new RuntimeException( e );
+		}
+	}
+
+	private Properties createFileWriter(File propertiesFile){
 		try {
 			Properties p = new Properties();
 			p.load( new FileInputStream(propertiesFile));
@@ -47,17 +70,26 @@ public class Config {
 		return values;
 	}
 
-	public int getInteger( String name ){
-		return Integer.valueOf( (String)reader.getOrDefault( name, "0" ) );
+	public int getInteger( String name, Integer defaultValue ){
+		return Integer.valueOf( getString( name, defaultValue.toString() ) );
 	}
 
 	public boolean getBoolean( String name ) {
 		return Boolean.valueOf( getString( name, "false" ) );
 	}
 
+	public boolean getBoolean( String name, boolean defaultValue ) {
+		return Boolean.valueOf( getString( name, "" + defaultValue ) );
+	}
+
 	public String getString( String name, String defaultValue ){
 		String value = (String)reader.getOrDefault( name, defaultValue );
 		Log.info( "Key loaded: " + name + ". Value: " + value );
 		return value;
+	}
+
+	public Class<?> getClass( String name, Class<?> defaultValue ) {
+		String clazz = getString( name, defaultValue.getCanonicalName() );
+		return asClass( clazz );
 	}
 }

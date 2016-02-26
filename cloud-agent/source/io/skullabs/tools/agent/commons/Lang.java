@@ -1,6 +1,7 @@
 package io.skullabs.tools.agent.commons;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -44,5 +45,23 @@ public abstract class Lang {
 		final BigDecimal l1Big = new BigDecimal(l1);
 		final BigDecimal l2Big = new BigDecimal(l2);
 		return l1Big.divide(l2Big, 2, BigDecimal.ROUND_HALF_DOWN).doubleValue();
+	}
+
+	public static double multiply( double l1, double l2 ){
+		final BigDecimal l1Big = new BigDecimal(l1);
+		final BigDecimal l2Big = new BigDecimal(l2);
+		return l1Big.multiply(l2Big, MathContext.DECIMAL64).doubleValue();
+	}
+
+	public static boolean isBlank( String s ){
+		return s == null || s.isEmpty();
+	}
+
+	public static void println( String msg, Object...args ){
+		System.out.println( str( msg, args ) );
+	}
+
+	public static String str( String msg, Object...args ){
+		return String.format( msg, args );
 	}
 }

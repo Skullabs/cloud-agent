@@ -1,4 +1,4 @@
-package io.skullabs.tools.agent.metrics;
+package io.skullabs.tools.agent;
 
 /**
  *

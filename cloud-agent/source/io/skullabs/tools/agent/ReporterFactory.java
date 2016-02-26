@@ -1,8 +1,8 @@
-package io.skullabs.tools.agent.metrics;
+package io.skullabs.tools.agent;
 
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.ScheduledReporter;
 import io.skullabs.tools.agent.commons.Config;
+import io.skullabs.tools.agent.metrics.MetricRegistry;
+import io.skullabs.tools.agent.metrics.ScheduledReporter;
 
 /**
  *

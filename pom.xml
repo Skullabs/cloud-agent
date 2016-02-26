@@ -23,21 +23,22 @@
         <config.dir.output>output</config.dir.output>
         <!-- dependencies version configuration -->
         <version.aws>1.10.33</version.aws>
-        <version.metrics>3.1.2</version.metrics>
+        <version.metricManager>3.1.2</version.metricManager>
         <version.byte.buddy>1.2.3</version.byte.buddy>
     </properties>
 
     <modules>
         <module>cloud-agent</module>
         <module>cloud-agent-aws</module>
+        <module>cloud-agent-dist</module>
     </modules>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${version.metrics}</version>
+                <groupId>io.dropwizard.metricManager</groupId>
+                <artifactId>metricManager-core</artifactId>
+                <version>${version.metricManager}</version>
             </dependency>
             <dependency>
                 <groupId>net.bytebuddy</groupId>

@@ -1,49 +1,49 @@
 package io.skullabs.tools.agent.metrics.aws;
 
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync;
-import com.amazonaws.services.cloudwatch.model.*;
-import com.codahale.metrics.*;
-import com.codahale.metrics.Timer;
+import com.amazonaws.services.cloudwatch.model.Dimension;
+import com.amazonaws.services.cloudwatch.model.MetricDatum;
+import com.amazonaws.services.cloudwatch.model.PutMetricDataRequest;
+import io.skullabs.tools.agent.AbstractReporter;
 import io.skullabs.tools.agent.commons.Log;
+import io.skullabs.tools.agent.metrics.FairMeter.MeterData;
+import io.skullabs.tools.agent.metrics.Gauge.GaugeData;
+import lombok.RequiredArgsConstructor;
 
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static io.skullabs.tools.agent.commons.Lang.convert;
-import static io.skullabs.tools.agent.commons.Lang.sum;
+import static io.skullabs.tools.agent.commons.Lang.isBlank;
 
 /**
  *
  */
-public class AWSCloudWatchReporter extends ScheduledReporter {
+@RequiredArgsConstructor
+public class AWSCloudWatchReporter extends AbstractReporter<MetricDatum> {
 
-	private static final double RATE_NS_MS = 0.000001;
-
+	final AmazonCloudWatchAsync cloudWatch;
 	final String namespace;
 	final Map<String, String> dimensions;
-	final AmazonCloudWatchAsync cloudWatch;
 
-	public AWSCloudWatchReporter(MetricRegistry registry, AmazonCloudWatchAsync cloudWatch, String namespace, final Map<String, String> dimensions ) {
-		super(registry, "aws-cloud-watch-reporter", MetricFilter.ALL, TimeUnit.SECONDS, TimeUnit.MILLISECONDS);
-		this.namespace = namespace;
-		this.dimensions = dimensions;
-		this.cloudWatch = cloudWatch;
+	@Override
+	protected void reportMeters(Iterable<MeterData> meters, List<MetricDatum> reportData) {
+		for (MeterData meter : meters) {
+			reportData.add( createMetricEntry( meter.name(), "Counter", meter.counter() ) );
+			reportData.add( createMetricEntry( meter.name(), "Rate", meter.rate() ) );
+		}
+
 	}
 
 	@Override
-	public void report(SortedMap<String, Gauge> gauges, SortedMap<String, Counter> counters, SortedMap<String, Histogram> histograms, SortedMap<String, Meter> meters, SortedMap<String, Timer> timers) {
+	protected void reportGauges(Iterable<GaugeData> gauges, List<MetricDatum> reportData) {
+		for (GaugeData gauge : gauges)
+			reportData.add( createMetricEntry( gauge.name(), gauge.value() ) );
+	}
+
+	@Override
+	protected void sendReport(List<MetricDatum> data) {
 		try {
-			final List<MetricDatum> data = new ArrayList<>(gauges.size()+timers.size());
-
-			Log.info( "Registered "+gauges.size()+" gauge metrics." );
-			for (Map.Entry<String, Gauge> gaugeEntry : gauges.entrySet())
-				reportGauge(gaugeEntry, data);
-
-			Log.info( "Registered "+timers.size()+" timer metrics." );
-			for (Map.Entry<String, Timer> timerEntry : timers.entrySet())
-				reportTimer(timerEntry, data);
-
 			final List<Future<?>> cloudWatchFutures = new ArrayList<>();
 			final Iterable<List<MetricDatum>> partitionedData = partition(data, 20);
 			sendDataToCloudWatch(cloudWatchFutures, partitionedData);
@@ -51,23 +51,6 @@ public class AWSCloudWatchReporter extends ScheduledReporter {
 		} catch( Throwable t ) {
 			t.printStackTrace();
 		}
-	}
-
-	private void reportGauge(Map.Entry<String, Gauge> gaugeEntry, List<MetricDatum> data) {
-		Gauge gauge = gaugeEntry.getValue();
-		Object value = gauge.getValue();
-
-		if ( value != null ){
-			double number = Double.valueOf( value.toString() );
-			data.add( createMetricEntry( gaugeEntry.getKey(), number ) );
-		}
-	}
-
-	private void reportTimer(Map.Entry<String, Timer> timerEntry, List<MetricDatum> data) {
-		final Timer timer = timerEntry.getValue();
-		final Snapshot snapshot = timer.getSnapshot();
-		final String key = timerEntry.getKey();
-		data.add( createStatsMetricEntry( key, snapshot, RATE_NS_MS ) );
 	}
 
 	private Iterable<List<MetricDatum>> partition(List<MetricDatum> data, int size) {
@@ -84,37 +67,36 @@ public class AWSCloudWatchReporter extends ScheduledReporter {
 		return newList;
 	}
 
-	private MetricDatum createMetricEntry( String key, Double value ) {
+	private MetricDatum createMetricEntry( String key, double value ) {
+		return createMetricEntry( key, null, value );
+	}
+
+	private MetricDatum createMetricEntry( String key, String type, double value ) {
 		return applyDimensionsIntoMetric( new MetricDatum()
 				.withMetricName(key)
 				.withTimestamp(new Date())
-				.withValue(value)
+				.withValue(value), type
 		);
 	}
 
-	private MetricDatum createStatsMetricEntry( String key, Snapshot snapshot, double rescale ) {
-		return applyDimensionsIntoMetric(new MetricDatum()
-				.withMetricName(key)
-				.withTimestamp(new Date()))
-				.withStatisticValues(
-					new StatisticSet()
-						.withSum( sum( snapshot.getValues() ) * rescale )
-						.withSampleCount((double) snapshot.size())
-						.withMinimum((double) snapshot.getMin() * rescale)
-						.withMaximum((double) snapshot.getMax() * rescale)
-				);
-	}
-
-	private MetricDatum applyDimensionsIntoMetric( MetricDatum metricDatum ){
-		if ( dimensions.size() > 0 ) {
-			List<Dimension> newDimensions = convert(
-					dimensions.entrySet(),
-					e -> new Dimension()
-							.withName(e.getKey())
-							.withValue(e.getValue()));
+	private MetricDatum applyDimensionsIntoMetric( MetricDatum metricDatum, String type ){
+		List<Dimension> newDimensions = convert( dimensions.entrySet(), this::createDimension);
+		if (  !isBlank( type ) )
+			newDimensions.add( createDimension( "MetricType", type ) );
+		if ( newDimensions.size() > 0 ) {
 			metricDatum.withDimensions(newDimensions);
 		}
 		return metricDatum;
+	}
+
+	private Dimension createDimension( Map.Entry<String,String> e ){
+		return createDimension(e.getKey(), e.getValue());
+	}
+
+	private Dimension createDimension( String key, String value ){
+		return new Dimension()
+				.withName(key)
+				.withValue(value);
 	}
 
 	private void sendDataToCloudWatch( List<Future<?>> cloudWatchFutures, Iterable<List<MetricDatum>> partitionedData ){
@@ -122,7 +104,6 @@ public class AWSCloudWatchReporter extends ScheduledReporter {
 			PutMetricDataRequest request = new PutMetricDataRequest()
 					.withNamespace(namespace)
 					.withMetricData(dataSubset);
-			Log.info( "Sending " + request );
 			cloudWatchFutures.add(cloudWatch.putMetricDataAsync( request ));
 		}
 	}
